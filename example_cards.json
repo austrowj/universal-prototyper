@@ -1,0 +1,27 @@
+[
+  {
+    "name": "Fireball",
+    "effect": "Deal 6 damage to target",
+    "tags": ["spell", "fire", "damage"]
+  },
+  {
+    "name": "Ice Shield",
+    "effect": "Gain 5 armor",
+    "tags": ["spell", "ice", "defense"]
+  },
+  {
+    "name": "Warrior",
+    "effect": "Attack: 3, Health: 5",
+    "tags": ["unit", "melee"]
+  },
+  {
+    "name": "Archer",
+    "effect": "Attack: 2, Health: 3, Range: 2",
+    "tags": ["unit", "ranged"]
+  },
+  {
+    "name": "Potion of Healing",
+    "effect": "Restore 10 health",
+    "tags": ["item", "healing"]
+  }
+]
