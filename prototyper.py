@@ -313,7 +313,9 @@ Universal Prototyper - Available Commands:
                 if len(parts) < 4:
                     print("Usage: movetag <from_pile> <to_pile> <tag>")
                 else:
-                    self.move_card(parts[1], parts[2], parts[3], by_tag=True)
+                    # Allow tag names with spaces (join remaining parts)
+                    tag = ' '.join(parts[3:])
+                    self.move_card(parts[1], parts[2], tag, by_tag=True)
             
             elif cmd == 'show':
                 if len(parts) < 2:
