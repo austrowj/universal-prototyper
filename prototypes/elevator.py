@@ -101,6 +101,8 @@ def update(state: State) -> tuple[State, list[Event]]:
                 elevator.passengers.append(floor.passengers.pop(0))
             else:
                 elevator.doors_open = False
+                if not elevator.going_to:
+                    events.append(f'❇️  Elevator {i} ready to move')
         
         elif elevator.going_to:
             if elevator.going_to[0] == elevator.floor:
@@ -122,7 +124,7 @@ def update(state: State) -> tuple[State, list[Event]]:
             target_floor += 1
 
         state.floors[origin_floor].passengers.append(Passenger(target_floor = target_floor, t = state.time))
-        events.append(f'🛗  New passenger waiting at floor {origin_floor}')
+        events.append(f'‼️  New passenger waiting at floor {origin_floor}')
 
     return state, events
 
