@@ -43,11 +43,12 @@ class State:
     config: Config = field(default_factory = lambda: Config())
     score: int = 0
     failed: bool = False
-    time: int = 0
-    power: int = 0
+    time_remaining: int = 0
 
     floors: list[Floor] = field(default_factory = list[Floor])
     elevators: list[Elevator] = field(default_factory = list[Elevator])
+
+    events: list[Event] = field(default_factory = list[Event])
 
 passenger_pool = {
     Passenger: 10,
@@ -59,22 +60,21 @@ passenger_pool_total = sum(v for v in passenger_pool.values())
 
 def main_loop(initial_state: State):
     state = initial_state
-    events = []
+    while (sum(len(x.passengers) for x in state.floors) == 0):
+        state = update(state)
+
     while (not state.failed):
         print()
-        pprint(state, width = 1)
-        for event in events:
-            print(event)
+        pprint(state, width = 80)
 
         action: Action = input('> ')
-        state, events = handle(state, action)
+        state.events = []
+        state = handle_action(state, action)
     
     print()
-    pprint(state, width = 1)
-    for event in events:
-        print(event)
+    pprint(state, width = 80)
 
-def handle(state: State, action: Action) -> tuple[State, list[Event]]:
+def handle_action(state: State, action: Action) -> State:
     if action == 'quit': exit()
 
     elif action == '': return update(state)
@@ -89,7 +89,7 @@ def handle(state: State, action: Action) -> tuple[State, list[Event]]:
             state.elevators[args[0]].going_to.append(args[1])
 
         except Exception:
-            print('Invalid "go" command, need <elevator>, <target floor>.')
+            state.events.append('❌ Invalid "go" command, need <elevator>, <target floor>.')
     
     elif action.startswith('dump'):
         try:
@@ -100,11 +100,11 @@ def handle(state: State, action: Action) -> tuple[State, list[Event]]:
             elevator = state.elevators[args[0]]
             if elevator.floor < len(state.floors)-1: raise Exception()
             
-            print(f'{len(elevator.passengers)} passengers dumped into the pit.')
+            state.events.append(f'{len(elevator.passengers)} passengers dumped into the pit.')
             elevator.passengers = []
 
         except Exception:
-            print(f'Invalid "dump" command, need <elevator> on floor {len(state.floors)-1}.')
+            state.events.append(f'❌ Invalid "dump" command, need <elevator> on floor {len(state.floors)-1}.')
 
     elif action.startswith('close'):
         try:
@@ -114,20 +114,19 @@ def handle(state: State, action: Action) -> tuple[State, list[Event]]:
 
             elevator = state.elevators[args[0]]
             
-            print(f"Forcibly closed elevator {args[0]}'s door.")
+            state.events.append(f"🔒 Forcibly closed elevator {args[0]}'s door.")
             elevator.doors_open = False
 
         except Exception:
-            print(f'Invalid "close" command, need <elevator>.')
+            state.events.append(f'❌ Invalid "close" command, need <elevator>.')
 
     else:
-        print('Invalid action.')
+        state.events.append(f'❌ Invalid action: "{action}".')
     
-    return state, []
+    return state
 
-def update(state: State) -> tuple[State, list[Event]]:
-    events: list[Event] = []
-    state.time += 1
+def update(state: State) -> State:
+    state.time_remaining -= 1
 
     # Move passengers out of elevators
     for i, elevator in enumerate(state.elevators):
@@ -145,9 +144,8 @@ def update(state: State) -> tuple[State, list[Event]]:
                 passenger = elevator.passengers.pop(0)
 
                 if passenger.target_floor == elevator.floor:
-                    state, debark_events = handle_debark(state, passenger)
-                    events.append(f'🎉 Elevator {i} dropped off a passenger.')
-                    events.extend(debark_events)
+                    state.events.append(f'🎉 Elevator {i} dropped off a passenger.')
+                    state = handle_debark(state, passenger)
                 else:
                     # Push to front of line.
                     floor.passengers.insert(0, passenger)
@@ -156,12 +154,12 @@ def update(state: State) -> tuple[State, list[Event]]:
                 # Elevator passengers are a stack.
                 elevator.passengers.insert(0, floor.passengers.pop(0))
                 if len(elevator.passengers) == elevator.capacity:
-                    events.append(f'⛔  Elevator {i} is now full.')
+                    state.events.append(f'⛔  Elevator {i} is now full.')
 
             else:
                 elevator.doors_open = False
                 if not elevator.going_to:
-                    events.append(f'❇️  Elevator {i} ready to move.')
+                    state.events.append(f'❇️  Elevator {i} ready to move.')
         
         elif elevator.going_to:
             if elevator.going_to[0] == elevator.floor:
@@ -169,7 +167,6 @@ def update(state: State) -> tuple[State, list[Event]]:
                 elevator.doors_open = True
             elif elevator.going_to[0] < elevator.floor:
                 elevator.floor -= 1
-                state.power -= 1
             else:
                 elevator.floor += 1
     
@@ -195,34 +192,33 @@ def update(state: State) -> tuple[State, list[Event]]:
             raise Exception('Passenger roll mechanism generated an invalid roll.')
 
         state.floors[origin_floor].passengers.append(passenger)
-        events.append(f'‼️  New passenger waiting at floor {origin_floor}.')
+        state.events.append(f'‼️  New passenger waiting at floor {origin_floor}.')
 
-    if state.power <= 0:
+    if state.time_remaining <= 0:
         state.failed = True
-        events.append(f'⚡  Power lost, game over. Final score: {state.score}')
+        state.events.append(f'⌛ Out of time. Final score: {state.score}')
 
-    return state, events
+    return state
 
-def handle_debark(state: State, passenger: Passenger) -> tuple[State, list[Event]]:
-    events: list[Event] = []
+def handle_debark(state: State, passenger: Passenger) -> State:
     if isinstance(passenger, VIP):
-        state.score += 10
-        events.append('Bonus score!')
+        state.score += 11
+        state.events.append('📈  +10 bonus score!')
     elif isinstance(passenger, Mechanic):
-        state.power += 5
-        events.append('Gained power!')
+        state.time_remaining += 20
+        state.events.append('⏳  +20 time gained!')
     elif isinstance(passenger, Brick):
         state.score -= 5
-        events.append('Lost points by delivering brick.')
+        state.events.append('😞 -5 score from delivering brick.')
     else:
         state.score += 1
     
-    return state, events
+    return state
 
 if __name__ == '__main__':
     main_loop(State(
         config = Config(float(sys.argv[3])),
-        power = 20,
+        time_remaining = 110,
         floors = [Floor() for _ in range(int(sys.argv[1]))],
         elevators = [Elevator(floor=0, capacity=5) for _ in range(int(sys.argv[2]))],
     ))
