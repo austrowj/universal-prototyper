@@ -2,8 +2,6 @@
 
 A simple text-based prototyping tool for rapidly testing simulation/strategy game mechanics.
 
-Hi.
-
 ## Overview
 
 Universal Prototyper is an interactive REPL (Read-Eval-Print Loop) tool that allows game designers to quickly prototype and test game mechanics using a card-based system. Game objects are represented as cards with three fields:
