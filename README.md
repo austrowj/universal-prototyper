@@ -1,6 +1,6 @@
 # Universal Prototyper
 
-A simple text-based prototyping tool for rapidly testing simulation/strategy game mechanics.
+A simple text-based prototyping tool for rapidly testing simulation/strategy game mechanics...
 
 ## Overview
 
